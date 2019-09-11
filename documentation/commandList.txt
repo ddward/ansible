@@ -1,5 +1,8 @@
 sudo apt-get install python3 python3-pip git docker.io
 
+#build a docker image
+sudo docker build -t ansible .
+
 # runs a docker image (named test here) mounts a drive within the container, opens ports
 sudo docker run -it -p 8080:80 --mount type=bind,source="$(pwd)"/cloud-drive,destination=/app/cloud-drive test
 
