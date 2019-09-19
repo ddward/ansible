@@ -1,4 +1,4 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, jsonify, request, abort
 import os
 
 app = Flask(__name__)
@@ -8,19 +8,17 @@ path = os.getcwd() + "/cloud-drive"
 
 @app.route("/")
 def hello_world():
-    for layer in os.walk(path):
-        print(layer)
+    passed_key = request.headers.get('api_key')
+    if(passed_key == 'test_key'):
+        return file_tree(path)
+    else:
+        return abort(404)
 
-    print("/nbreak/n")
-    print(os.listdir(path))
-    print(path_to_dict(path))
-    return jsonify(path_to_dict(path))
-
-def path_to_dict(path):
+def file_tree(path):
     d = {'name': os.path.basename(path)}
     if os.path.isdir(path):
         d['type'] = "directory"
-        d['children'] = [path_to_dict(os.path.join(path,x)) for x in os.listdir\
+        d['children'] = [file_tree(os.path.join(path,x)) for x in os.listdir\
                         (path)]
     else:
         d['type'] = "file"
