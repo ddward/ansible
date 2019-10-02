@@ -1,0 +1,24 @@
+<!doctype html>
+<html>
+  <head>
+    <link href="{{ url_for('static', filename='index.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    {% for key, value in directory.items() %}
+    <form method="post">
+      <input type="hidden" name="selection" value="{{ key }}"></input>
+      <input type="hidden" name="isDirectory" value="{{ value.is_dir }}"></input>
+      <button type="submit" class="dir-item">{{ key }}</button>
+    </form>
+    {% endfor %}
+    <p></p>
+    <form method="post">
+      <input type="hidden" name="selection" value="back"></input>
+      <button type="submit" class="dir-item">back</button>
+    </form>
+    <form method="post">
+      <input type="hidden" name="selection" value="home"></input>
+      <button type="submit" class="dir-item">home</button>
+    </form>
+  </body>
+</html>
