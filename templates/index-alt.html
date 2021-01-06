@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+  <head>
+    <link href="{{ url_for('static', filename='index.css') }}" rel="stylesheet">
+  </head>
+  <body>
+    <p>
+    {% for key, value in directory.items() %}
+
+    <br><a
+
+      {% if curDir|length %}
+        href="/{{ curDir }}/{{ key }}"
+      {% else %}
+        href="/{{ key }}"
+      {% endif %}
+
+      class="dir-item"> {{ key }} - test mode</a>
+
+    {% endfor %}
+
+    </p>
+    <button class="dir-item" onclick="goBack()">Back</button>
+    <a href="/" class="dir-item">Home</a>
+
+    <p></p>
+    <a href="/logout" class="dir-item">Logout</a>
+
+
+
+  </body>
+</html>
