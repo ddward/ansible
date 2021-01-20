@@ -1,20 +1,31 @@
+from cryptography.fernet import Fernet
 import datetime
 from flask import (flash, Flask, g, Markup, redirect, render_template, request,
     send_from_directory, session, url_for)
 import functools
+import logging
 import os
-import re
 from secrets import token_urlsafe
 import sqlite3
+import sys
+from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
+from build_dir import build_dir
+import sanitize_path
+from db import get_db, create_user, user_exists
+import html
+
+
+logging.basicConfig(stream=sys.stderr, level=logging.DEBUG)
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(256)
+app.config["SECRET_KEY"] = os.urandom(256) # TODO: change to environemnt variable
+app.config["CRYPTO_KEY"] = Fernet.generate_key() # TODO put this somewhere where it wont update often possibly environmnet analize impact of changing.
 
 path = os.getcwd()
 database = os.path.join(path, 'ansible.db')
 
-userState = {}
+db = get_db(app)
 
 def login_required(view):
     @functools.wraps(view)
@@ -24,86 +35,99 @@ def login_required(view):
         return view(**kwargs)
     return wrapped_view
 
-@app.route("/", methods=('GET', 'POST'))
+@app.route('/', defaults={'loc': ""}, methods=('GET',))
+@app.route('/<path:loc>', methods=('GET',))
 @login_required
-def index():
+def ansible(loc):
+    logging.debug('made it here')
+    sanitize_path.sanitize(loc)
 
-    currentDir = 'cloud-drive'
-    uid = None
+    # TODO: if loc is empty return the home directory for the node
+    # possible security concern - could ask for a higher level node
+    # TODO: for future addition of link sending - store encrypted version
+    # of top level directory in session can possibly use a werkzeug module
+    # TODO: check if input is an encrypted link (use a /share/ or something to indicate)
+    # TODO: process encrypted link
+    # TODO: process a normal link
+    # TODO: get the the home directory
 
-    with app.app_context():
-        uid = session['user_id']
-        if request.method == 'POST':
-            selection = request.form['selection']
-            if selection == 'home':
-                pass
-            elif selection == 'back':
-                currentDir = userState[uid]['currentDir'].rsplit('/', 1)[0]
-            else:
-                if selection in userState[uid]['directoryDict']:
-                    isDir = request.form['isDirectory']
-                    if isDir == 'True':
-                        currentDir = (userState[uid]['currentDir'] +
-                        '/' + selection)
-                    else:
-                        return send_from_directory(
-                        directory=userState[uid]['currentDir'],
-                        filename=selection)
-        else:
-            if uid in userState:
-                currentDir = userState[uid]['currentDir']
-            else:
-                currentDir = 'cloud-drive'
+    # TODO: authenticate the requested directory
+
+    logging.debug(loc)
+
+    currentDir = os.path.join('cloud-drive', loc) #update to be maliable for sharing
 
     currentPath = os.path.join(path, currentDir)
 
-    directoryDict = {}
+    logging.debug(os.path.splitext(currentPath)[1])
+    logging.debug(currentDir)
+    logging.debug(path)
+    logging.debug(currentPath)
+    logging.debug(loc)
 
-    with os.scandir(currentPath) as directory:
-        for entry in directory:
-            if not entry.name.startswith('.'):
-                #stat dict reference:
-                #https://docs.python.org/2/library/stat.html
-                fileStats = entry.stat()
-                directoryDict[entry.name] = {"is_dir" : entry.is_dir(),
-                                            "size" : fileStats.st_size}
+    fileExtension = os.path.splitext(currentPath)[1]
+    if fileExtension:
+        splitUrl = currentPath.rsplit('/', 1)
+        localDir = splitUrl[0]
+        filename = splitUrl[1]
+        absPath = os.path.join(path, 'cloud-drive', localDir)
+        return send_from_directory(directory=absPath, filename=filename)
 
-    userState[uid] = {'currentDir' : currentDir,
-    'lastSeen' : datetime.datetime.now(), 'directoryDict' : directoryDict}
+    directoryDict = build_dir(currentPath)
 
-    return render_template('index.html',directory=directoryDict)
+    return render_template('index-alt.html', directory=directoryDict, curDir=loc)
 
 @app.route("/login", methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
+        username = request.form['username']
         password = request.form['password']
-        db = get_db()
+        db = get_db(app)
         error = None
 
         user = db.execute(
-            'SELECT * FROM user WHERE username = (?)', ('default',)
+            'SELECT * FROM user WHERE username = (?)', (username,)
         ).fetchone()
-
-        if not check_password_hash(user['password'], password):
-            error = 'Incorrect password, please try again.'
+        if user is not None:
+            if not check_password_hash(user['password'], password):
+                error = 'Incorrect password, please try again.'
+        else:
+            error = 'User not found'
 
         if error is None:
             session.clear()
             session['authenticated'] = 'true'
             session['user_id'] = token_urlsafe()
-            return redirect(url_for('index'))
+            return redirect(url_for('ansible'))
 
         flash(error)
 
     return render_template('login.html')
 
+@app.route("/signup", methods=('GET','POST'))
+def signup():
+    if request.method == 'POST':
+        username = request.form['name']
+        password = request.form['password']
+        error = None
 
-def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            database,
-            detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
+        if not user_exists(username):
+            create_user(username,password)
+        else:
+            error = 'Username already exists.'
 
-    return g.db
+        if  error is None:
+            return redirect(url_for('login'))
+
+        flash(error)
+
+
+    return render_template('signup.html')
+
+@app.route("/logout", methods=('GET',))
+def logout():
+    del session['authenticated']
+    return redirect(url_for('login'))
+
+
+

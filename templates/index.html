@@ -10,15 +10,16 @@
       <input type="hidden" name="isDirectory" value="{{ value.is_dir }}"></input>
       <button type="submit" class="dir-item">{{ key }}</button>
     </form>
+
+    <a href="node/{{ key }}" class="dir-item"> {{ key }} - test mode</a>
     {% endfor %}
     <p></p>
     <form method="post">
       <input type="hidden" name="selection" value="back"></input>
-      <button type="submit" class="dir-item">back</button>
+      <button type="submit" class="dir-item">Back</button>
     </form>
-    <form method="post">
-      <input type="hidden" name="selection" value="home"></input>
-      <button type="submit" class="dir-item">home</button>
-    </form>
+    <a href="/">Home</a>
+    <p></p>
+    <a href="/logout" class="dir-item">Logout</a>
   </body>
 </html>
