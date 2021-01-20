@@ -1,9 +1,0 @@
-node ip address is displayed in iframe
-node ip address is sent from user's browser and could be intercepted
-node folder structure is visible in url - could encrypt it?
-should assume that a node ip address becomes public and will be targeted for attack 
-	* what kind of attacks are likley?
-		* port sniffing
-
-sending unsafe urls such as ../../ , .. , ~ , / 
-

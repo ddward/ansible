@@ -20,12 +20,9 @@
   <body class="text-center">
     <form class="form-signin"  method="post">
       <img class="mb-4" src="{{ url_for('static', filename='cloud.jpg') }}" alt="" width="72" height="72">
-      <label for="inputUsername" class="sr-only">Password</label>
-      <input type="text" name="username" id="inputUsername" class="form-control" placeholder="Username" required>
       <label for="inputPassword" class="sr-only">Password</label>
       <input type="password" name="password" id="inputPassword" class="form-control" placeholder="Password" required>
       <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
-      <a href="/signup">Sign Up</a>
       {% for message in get_flashed_messages() %}
       <div class="alert alert-dismissible alert-light">{{ message }}
         <button type="button" class="close" data-dismiss="alert">&times;</button>
