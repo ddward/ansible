@@ -27,60 +27,61 @@ def get_db(app):
 
         return g.db
 
-
-def gen_default_user():
-
-    while(True):
-        password = getpass(prompt='Create a password, at least 8 characters: ')
-        password2 = getpass(prompt='Confirm password: ')
-        if password == password2:
-            if len(password) < 8:
-                print('Password must be at least 8 characters.')
-            else:
-                break
-        else:
-            print('Passwords do not match')
+def insert(table,columnTuple,valueTuple):
     try:
-        create_user('default',password)
-    except:
-        logging.error(traceback.format_exc())
-
-def create_user(username,password):
-    try:
-        db = sqlite3.connect(DATABASE)
-        db.execute(
-            'INSERT INTO user (username, password) VALUES (?, ?)',
-            (username, generate_password_hash(password))
+        dbConnection = sqlite3.connect(DATABASE)
+        columnTupleString = ', '.join(columnTuple)
+        dbConnection.execute(
+            'INSERT INTO ' + table + ' (' + columnTupleString + ') VALUES (?, ?)',
+            (valueTuple)
         )
-        db.commit()
+        dbConnection.commit()
     except Exception as e:
         logging.error(traceback.format_exc())
 
-def user_exists(username):
+def select_one(table, return_columns, query_column, value):
     try:
-        db = sqlite3.connect(DATABASE)
-        result = (db.execute(
-        'SELECT CASE WHEN EXISTS( SELECT 1 FROM user WHERE username = (?)) THEN 1 ELSE 0 END', 
-        (username,)
+        dbConnection = sqlite3.connect(DATABASE)
+        result = (dbConnection.execute(
+        'SELECT ' + ', '.join(return_columns) + ' FROM ' + table + ' WHERE ' + query_column + '= (?) Limit 1', 
+        (value,)
         ).fetchone())
+        return result
+    except Exception as e:
+        logging.error(traceback.format_exc())
+        print("User existence check failed")
+
+def exists(table,column,value):
+    try:
+        dbConnection = sqlite3.connect(DATABASE)
+        result = dbConnection.execute(
+        'SELECT CASE WHEN EXISTS( SELECT 1 FROM ' + table + ' WHERE ' + column + '= (?)) THEN 1 ELSE 0 END', 
+        (value,)
+        ).fetchone()
         if result[0] == 1:
             return True
         else:
             return False
     except Exception as e:
         logging.error(traceback.format_exc())
-        print("User existence check failed")
 
-def get_user(username):
+
+def update(table, update_dict, query_column, query_value):
     try:
-        db = sqlite3.connect(DATABASE)
-        result = (db.execute(
-        'SELECT 1 FROM user WHERE username = (?)', 
-        (username,)
+        dbConnection = sqlite3.connect(DATABASE)
+        result = (dbConnection.execute(
+        'UPDATE ' + table + ' SET ' + build_set_statement(update_dict) + ' WHERE ' + query_column + '= (?)', 
+        (query_value,)
         ).fetchone())
-        print(result)
+        dbConnection.commit()
         return result
     except Exception as e:
         logging.error(traceback.format_exc())
-        print("User existence check failed")
+
+def build_set_statement(updated_field_dict):
+    setItems = []
+    for field in updated_field_dict:
+        setItems.append(field +  ' = \'' + updated_field_dict[field] + '\'')
+    setFields =  ', '.join(setItems)
+    return setFields
 

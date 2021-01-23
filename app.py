@@ -12,7 +12,8 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
 from build_dir import build_dir
 import sanitize_path
-from db import get_db, create_user, user_exists
+from db import get_db
+from user import create_user, user_exists, gen_default_user, get_user, update_user
 import html
 
 
@@ -82,14 +83,12 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        db = get_db(app)
         error = None
 
-        user = db.execute(
-            'SELECT * FROM user WHERE username = (?)', (username,)
-        ).fetchone()
+        user = get_user(username)
         if user is not None:
-            if not check_password_hash(user['password'], password):
+            user_password = user[1]
+            if not check_password_hash(user_password, password):
                 error = 'Incorrect password, please try again.'
         else:
             error = 'User not found'
@@ -123,6 +122,32 @@ def signup():
 
 
     return render_template('signup.html')
+
+@app.route("/updatepassword", methods=('GET','POST'))
+def update_password():
+    if request.method == 'POST':
+
+        username = request.form['username']
+        prev_password = request.form['password']
+        new_password = request.form['new_password']
+        verified_new_password = request.form['verify_new_password']
+
+        error = None
+        if(new_password == verified_new_password):
+            if user_exists(username):
+                update_user(username,prev_password,new_password)
+            else:
+                error = 'User doesnt exist.'
+        else:
+            error = 'Passwords do not match'
+
+        if  error is None:
+            return redirect(url_for('login'))
+
+        flash(error)
+
+
+    return render_template('update-password.html')
 
 @app.route("/logout", methods=('GET',))
 def logout():
